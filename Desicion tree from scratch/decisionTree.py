@@ -1,6 +1,7 @@
 # CART on the Bank Note dataset
 from random import seed
 from random import randrange
+import time
 
 from createDataset import convertToFloat, getNewCsv, getRangeByResult, getValuesByResult, load_csv
  
@@ -38,7 +39,12 @@ def evaluate_algorithm(dataset, algorithm, n_folds, measurementData, *args):
 			row_copy = list(row)
 			test_set.append(row_copy)
 			row_copy[-1] = None
+		# measurement of execution time of desicion tree
+		startTime = time.time()
 		predicted = algorithm(train_set, test_set, measurementData, *args)
+		executionTime = (time.time() - startTime)
+		# ##############################################
+		print(f'time of execution in (s): {executionTime}')
 		actual = [row[-1] for row in fold]
 		accuracy = accuracy_metric(actual, predicted)
 		scores.append(accuracy)
@@ -297,33 +303,41 @@ seed(1)
 ########################################################################################
 # this is an annex that creates a newDataset from the ranges of the original
 ########################################################################################
+def createNewDataset(size):
+	# load original dataset
+	originalFilename = 'data_banknote_authentication'
+	originalDataset = load_csv(originalFilename)
+	# convert string attributes to integers
+	convertToFloat(originalDataset)
 
-# load original dataset
-originalFilename = 'data_banknote_authentication'
-originalDataset = load_csv(originalFilename)
-# convert string attributes to integers
-convertToFloat(originalDataset)
+	# get new csv using ranges of values from original
+	valuesMatrix = getValuesByResult(originalDataset)
+	rangeMatrix = getRangeByResult(valuesMatrix)
+	newFilename = 'new_data_banknote_authentication'
+	getNewCsv(rangeMatrix, newFilename, size)
 
-# get new csv using ranges of values from original
-valuesMatrix = getValuesByResult(originalDataset)
-rangeMatrix = getRangeByResult(valuesMatrix)
-newFilename = 'new_data_banknote_authentication'
-getNewCsv(rangeMatrix, newFilename, 500)
+	# load new data set
+	newDataset = load_csv(newFilename)
 
-# load new data set
-newDataset = load_csv(newFilename)
-
-# convert string attributes to integers
-convertToFloat(newDataset)
+	# convert string attributes to integers
+	convertToFloat(newDataset)
+	
+	return newDataset
 
 ########################################################################################
-
-# evaluate algorithm
 n_folds = 5
 max_depth = 5
 min_size = 10
-measurementData = [0, 0, 0]
-scores = evaluate_algorithm(newDataset, decision_tree, n_folds, measurementData, max_depth, min_size)
-print('Scores: %s' % scores)
-print('Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
-print(f'assigns: {measurementData[0]} / comparisons: {measurementData[1]} / executed lines of code: {measurementData[2]}')
+# evaluate algorithm set for these values [10, 50, 100, 200, 500, 1000, 5000, 10000]
+sizesOfSets = [10, 50, 100, 200, 500, 1000, 5000, 10000]
+for size in sizesOfSets:
+	newDataset = createNewDataset(size)
+	# assigns, comparisons, executed lines
+	measurementData = [0, 0, 0]
+	print()
+	print(f'size of set: {size}')
+	scores = evaluate_algorithm(newDataset, decision_tree, n_folds, measurementData, max_depth, min_size)
+	print(f'Scores: {scores}')
+	print('Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
+	print(f'assigns: {measurementData[0]} / comparisons: {measurementData[1]} / executed lines of code: {measurementData[2]}')
+	print()
